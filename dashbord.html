@@ -12,9 +12,19 @@
         .btn-primary { transition: background-color 0.3s, transform 0.2s; }
         .btn-primary:hover { background-color: #1a56db; transform: translateY(-1px); }
         .status-pill { padding: 4px 8px; border-radius: 9999px; font-weight: 600; font-size: 0.75rem; }
-        .status-New { background-color: #fef3c7; color: #a16207; } /* Amber */
+        .status-New-Intake { background-color: #fef3c7; color: #a16207; } /* Amber */
         .status-In-Progress { background-color: #dbeafe; color: #1e40af; } /* Blue */
         .status-Complete { background-color: #d1fae5; color: #065f46; } /* Green */
+        /* Custom styling for the select dropdown */
+        .status-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M7 7l3-3 3 3m0 6l-3 3-3-3' stroke='%234F46E5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em;
+            padding-right: 2.5rem;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 sm:p-8">
@@ -26,6 +36,7 @@
             </svg>
             Tap Engage Master Dashboard
         </h1>
+        <!-- Link updated for relative pathing -->
         <a href="./intake.html" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg text-center btn-primary">
             + New Client Intake
         </a>
@@ -36,7 +47,11 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span>Loading client intakes from database...</span>
+        <span>Authenticating and loading your private client intakes...</span>
+    </div>
+
+    <div id="authError" class="hidden text-center text-red-600 font-bold p-8 bg-red-100 rounded-xl card">
+        ERROR: Authentication failed. Please refresh or try again.
     </div>
 
     <div id="clientList" class="space-y-4">
@@ -50,15 +65,15 @@
     <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, doc, updateDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // IMPORTANT: Global variables from the Canvas environment are injected here.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        setLogLevel('error'); // Set to error to keep the console clean unless serious issues occur.
+        setLogLevel('error'); 
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -67,6 +82,12 @@
         const clientList = document.getElementById('clientList');
         const loadingMessage = document.getElementById('loadingMessage');
         const noDataMessage = document.getElementById('noDataMessage');
+        const authError = document.getElementById('authError');
+        
+        let currentUserId = null;
+        let isAuthReady = false;
+        
+        const statusOptions = ['New Intake', 'In Progress', 'Complete'];
 
         // Utility to format timestamp
         function formatTimestamp(timestamp) {
@@ -74,16 +95,50 @@
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
+        
+        // --- Core Data Functionality ---
+        
+        // Function to update the client status in Firestore
+        async function updateClientStatus(docId, newStatus) {
+            if (!currentUserId) {
+                console.error("User not authenticated to update data.");
+                return;
+            }
+            // Private Document Path: /artifacts/{appId}/users/{userId}/client_intakes/{docId}
+            const docPath = `artifacts/${appId}/users/${currentUserId}/client_intakes`;
+            const clientDocRef = doc(db, docPath, docId);
+
+            try {
+                await updateDoc(clientDocRef, { status: newStatus });
+                console.log(`Status updated for ${docId} to ${newStatus}`);
+            } catch (error) {
+                console.error("Error updating document:", error);
+                // In a real app, you would show a user-facing error message here.
+            }
+        }
 
         // Utility to create the HTML card for a client intake
         function createClientCard(doc) {
             const data = doc.data();
+            const docId = doc.id;
             const card = document.createElement('div');
             card.className = 'card bg-white p-6 rounded-xl hover:shadow-lg transition duration-300';
+            
+            // Build the status dropdown
+            const selectHtml = statusOptions.map(status => 
+                `<option value="${status}" ${data.status === status ? 'selected' : ''}>${status}</option>`
+            ).join('');
+            
             card.innerHTML = `
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-3 mb-3">
                     <h2 class="text-xl font-semibold text-gray-900 truncate">${data.clientName}</h2>
-                    <span class="status-pill status-${data.status.replace(/\s/g, '-')}" title="Status">${data.status}</span>
+                    <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+                        <span class="text-xs font-medium text-gray-500">Status:</span>
+                        <select id="status-${docId}" data-doc-id="${docId}" 
+                                class="status-select border border-indigo-400 rounded-lg p-1 text-sm text-indigo-700 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            ${selectHtml}
+                        </select>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-y-2 text-sm text-gray-600">
                     <div>
@@ -96,7 +151,7 @@
                     </div>
                     <div class="truncate">
                         <span class="font-medium text-gray-800">ID:</span> 
-                        <span title="${doc.id}">${doc.id.substring(0, 8)}...</span>
+                        <span class="bg-gray-100 px-2 py-0.5 rounded text-xs" title="${docId}">${docId.substring(0, 8)}...</span>
                     </div>
                 </div>
                 <div class="mt-3 pt-3 border-t">
@@ -104,34 +159,30 @@
                     <p class="text-sm text-gray-700 whitespace-pre-wrap">${data.projectDetails}</p>
                 </div>
             `;
+            
+            // Attach event listener to the new select element
+            const selectElement = card.querySelector(`#status-${docId}`);
+            if (selectElement) {
+                selectElement.addEventListener('change', (e) => {
+                    const newStatus = e.target.value;
+                    const id = e.target.dataset.docId;
+                    updateClientStatus(id, newStatus);
+                });
+            }
+
             return card;
         }
 
-        async function initFirebase() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                // Once authenticated, start listening for data changes
-                listenForIntakes();
-
-            } catch (error) {
-                console.error("Firebase Auth Error:", error);
-                loadingMessage.innerHTML = '<span class="text-red-600 font-medium">Error: Could not authenticate to load data.</span>';
-            }
-        }
-
+        // Sets up the real-time listener for the PRIVATE collection
         function listenForIntakes() {
-            // Define the collection path for public data: 
-            // /artifacts/{appId}/public/data/client_intakes
-            const collectionPath = `artifacts/${appId}/public/data/client_intakes`;
+            // PRIVATE COLLECTION PATH: /artifacts/{appId}/users/{userId}/client_intakes
+            const collectionPath = `artifacts/${appId}/users/${currentUserId}/client_intakes`;
             const q = query(collection(db, collectionPath));
             
             // onSnapshot listens for real-time updates
             onSnapshot(q, (snapshot) => {
                 loadingMessage.classList.add('hidden');
+                authError.classList.add('hidden');
                 clientList.innerHTML = ''; // Clear existing list
 
                 if (snapshot.empty) {
@@ -148,6 +199,33 @@
                 loadingMessage.innerHTML = '<span class="text-red-600 font-medium">Error loading data. Check console.</span>';
             });
         }
+
+        // --- Authentication & Initialization ---
+
+        async function initFirebase() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Auth Sign-in Error:", error);
+            }
+        }
+
+        // Use onAuthStateChanged to ensure we have the UID before listening to the database
+        onAuthStateChanged(auth, (user) => {
+            isAuthReady = true;
+            loadingMessage.classList.add('hidden');
+            if (user) {
+                currentUserId = user.uid;
+                listenForIntakes(); // Start listening only after we have the UID
+            } else {
+                authError.classList.remove('hidden');
+                console.error("User not authenticated. Cannot access private data.");
+            }
+        });
 
         initFirebase();
     </script>
