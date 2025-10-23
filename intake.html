@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tap Engage - Client Intake</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic enhancements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .form-container {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .input-field {
+            border: 1px solid #d1d5db; /* Gray 300 */
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-field:focus {
+            border-color: #3b82f6; /* Blue 500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .btn-submit {
+            background-color: #10b981; /* Emerald 500 */
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-submit:hover {
+            background-color: #059669; /* Emerald 600 */
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">
+            Client Onboarding Form
+        </h1>
+        <p class="text-lg text-gray-600 mt-2">
+            Collect critical information to start the engagement process.
+        </p>
+    </header>
+
+    <main class="max-w-3xl mx-auto">
+
+        <form id="intakeForm" class="p-6 sm:p-10 bg-white rounded-xl form-container">
+            
+            <div id="messageBox" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">Success!</strong>
+                <span class="block sm:inline"> Form data logged to console (simulated save).</span>
+            </div>
+
+            <!-- Client Contact Information -->
+            <fieldset class="mb-8 p-4 border border-gray-200 rounded-lg">
+                <legend class="text-xl font-semibold text-gray-700 px-2">1. Contact Details</legend>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    
+                    <div>
+                        <label for="clientName" class="block text-sm font-medium text-gray-700 mb-1">Client Full Name</label>
+                        <input type="text" id="clientName" name="clientName" required class="w-full px-4 py-2 rounded-lg input-field" placeholder="e.g., Jane Doe">
+                    </div>
+
+                    <div>
+                        <label for="companyName" class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                        <input type="text" id="companyName" name="companyName" required class="w-full px-4 py-2 rounded-lg input-field" placeholder="e.g., Tech Solutions Inc.">
+                    </div>
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" id="email" name="email" required class="w-full px-4 py-2 rounded-lg input-field" placeholder="client@example.com">
+                    </div>
+
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" class="w-full px-4 py-2 rounded-lg input-field" placeholder="(555) 555-5555">
+                    </div>
+
+                </div>
+            </fieldset>
+
+            <!-- Project Details -->
+            <fieldset class="mb-8 p-4 border border-gray-200 rounded-lg">
+                <legend class="text-xl font-semibold text-gray-700 px-2">2. Project Scope</legend>
+                
+                <div class="mt-4 space-y-6">
+                    <div>
+                        <label for="serviceType" class="block text-sm font-medium text-gray-700 mb-1">Service Required</label>
+                        <select id="serviceType" name="serviceType" required class="w-full px-4 py-2 rounded-lg input-field">
+                            <option value="">Select a service...</option>
+                            <option value="web_dev">Web Development</option>
+                            <option value="marketing">Digital Marketing Campaign</option>
+                            <option value="consulting">Business Consulting</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="projectDescription" class="block text-sm font-medium text-gray-700 mb-1">Brief Project Description</label>
+                        <textarea id="projectDescription" name="projectDescription" rows="4" required class="w-full px-4 py-2 rounded-lg input-field" placeholder="Outline the main goals and features of the project..."></textarea>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Submission and Navigation -->
+            <div class="flex flex-col sm:flex-row justify-between gap-4 mt-8">
+                
+                <a href="./dashboard.html" class="flex-grow">
+                    <button type="button" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-gray-300 transition duration-150 ease-in-out">
+                        Back to Dashboard
+                    </button>
+                </a>
+                
+                <button type="submit" class="flex-grow btn-submit text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-emerald-300">
+                    Submit Client Data
+                </button>
+            </div>
+
+        </form>
+    </main>
+
+    <script>
+        document.getElementById('intakeForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Stop the form from submitting normally
+
+            // Collect form data (simulating a database save)
+            const formData = {
+                clientName: document.getElementById('clientName').value,
+                companyName: document.getElementById('companyName').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                serviceType: document.getElementById('serviceType').value,
+                projectDescription: document.getElementById('projectDescription').value,
+                timestamp: new Date().toISOString()
+            };
+
+            // Log data to console (simulated successful save)
+            console.log('--- Client Intake Form Submitted ---');
+            console.log(formData);
+            console.log('--- End of Data ---');
+
+            // Show success message box
+            const messageBox = document.getElementById('messageBox');
+            messageBox.classList.remove('hidden');
+
+            // Optionally clear the form after successful submission
+            this.reset();
+
+            // Hide the message after 5 seconds
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        });
+    </script>
+
+    <footer class="mt-10 pt-4 border-t border-gray-200 text-center">
+        <p class="text-sm text-gray-500">
+            &copy; 2025 Tap Engage Solutions.
+        </p>
+    </footer>
+
+</body>
+</html>
+
+
